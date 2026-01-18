@@ -3,3 +3,8 @@ keyboard
 sounddevice
 numpy
 pyperclip
+pywin32
+psutil
+pystray
+Pillow
+comtypes

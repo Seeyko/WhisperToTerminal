@@ -27,25 +27,34 @@ Speak naturally while highlighting code and pointing to elements on your screen.
 **Goal**: Capture metadata from the active window and selection.
 
 #### 1.1 Active Window Context
-- [ ] Get active window title and process name (`win32gui`)
-- [ ] Detect application type (IDE, browser, terminal, etc.)
-- [ ] Extract file path from window title (VSCode, Notepad++, etc.)
+- [x] Get active window title and process name (`win32gui`)
+- [x] Detect application type (IDE, browser, terminal, etc.)
+- [x] Extract file path from window title (VSCode, Notepad++, etc.)
 
 #### 1.2 Selected Text Capture
-- [ ] Capture selected text from any application
-- [ ] Method 1: Clipboard sniffing (Ctrl+C simulation)
-- [ ] Method 2: UI Automation API for supported apps
-- [ ] Preserve selection metadata (start/end positions if available)
+- [x] Capture selected text from any application
+- [x] Method 1: Clipboard sniffing (Ctrl+C simulation)
+- [ ] Method 2: UI Automation API for supported apps (optional enhancement)
+- [x] Preserve selection metadata (start/end positions if available)
 
 #### 1.3 File Context
-- [ ] For IDEs: Extract current file path and line number
-- [ ] For browsers: Extract current URL
-- [ ] For terminals: Extract current working directory and last command
+- [x] For IDEs: Extract current file path and line number
+- [x] For browsers: Extract current URL
+- [x] For terminals: Extract current working directory and last command
+
+#### 1.4 Continuous Monitoring (NEW!)
+- [x] Background monitor during recording (polls every 200ms)
+- [x] Window focus change tracking with timestamps
+- [x] Clipboard change detection (multi-selection support)
+- [x] Timeline of all context events
+- [x] Format timeline for prompt inclusion
+- [x] Integrate with whisper_app.py
 
 **Tech Stack**:
 - `pywin32` / `win32gui` - Window information
 - `pyperclip` - Clipboard operations
 - `comtypes` + `UIAutomationCore` - UI Automation
+- `threading` - Background monitoring
 
 ---
 
@@ -109,9 +118,9 @@ Speak naturally while highlighting code and pointing to elements on your screen.
 **Goal**: Format captured context into useful prompts.
 
 #### 4.1 Prompt Templates
-- [ ] Default template with context sections
-- [ ] Customizable templates (user config)
-- [ ] Smart formatting based on context type
+- [x] Default template with context sections
+- [x] Customizable templates (user config)
+- [x] Smart formatting based on context type
 
 #### 4.2 Output Options
 - [ ] Clipboard (current behavior)
@@ -193,13 +202,14 @@ Speak naturally while highlighting code and pointing to elements on your screen.
 
 ## Implementation Order
 
-1. **Phase 1.1** - Active window context (quick win)
-2. **Phase 1.2** - Selected text capture
-3. **Phase 4.1** - Basic prompt assembly
-4. **Phase 1.3** - File/URL context
-5. **Phase 3.1** - VSCode integration
-6. **Phase 2** - Element picker (complex)
-7. **Phase 5** - Polish and settings
+1. **Phase 1.1** - Active window context (quick win) ✅
+2. **Phase 1.2** - Selected text capture ✅
+3. **Phase 4.1** - Basic prompt assembly ✅
+4. **Phase 1.3** - File/URL context ✅
+5. **Phase 1.4** - Continuous monitoring & timeline ✅
+6. **Phase 3.1** - VSCode integration
+7. **Phase 2** - Element picker (complex)
+8. **Phase 5** - Polish and settings
 
 ---
 

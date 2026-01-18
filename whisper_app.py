@@ -19,6 +19,10 @@ import pystray
 from PIL import Image, ImageDraw
 import tkinter as tk
 
+from context_capture import get_active_window_info, get_context_summary, WindowContext
+from prompt_assembler import PromptAssembler, PromptConfig
+from context_monitor import ContextMonitor, ContextTimeline, format_timeline_for_prompt
+
 # Configuration
 HOTKEY = "ctrl+shift+space"
 SAMPLE_RATE = 16000
@@ -41,6 +45,8 @@ model = None
 indicator = None
 tray_icon = None
 command_queue = queue.Queue()
+captured_context: WindowContext = None  # Context captured when recording starts
+context_monitor: ContextMonitor = None  # Continuous context monitoring during recording
 
 
 class ModernIndicator:
@@ -310,12 +316,23 @@ def audio_callback(indata, frames, time_info, status):
 
 
 def start_recording():
-    """Start recording audio."""
-    global is_recording, is_processing, audio_buffer, stream
+    """Start recording audio with continuous context monitoring."""
+    global is_recording, is_processing, audio_buffer, stream, captured_context, context_monitor
 
     # Don't start if already processing
     if is_processing:
         return False
+
+    # Capture initial context from active window
+    captured_context = get_active_window_info(capture_selection=False)
+    if captured_context:
+        print(f"[Context] {captured_context.process_name} - {captured_context.app_type.value}")
+
+    # Start continuous context monitoring
+    # This will track window switches and text selections while recording
+    context_monitor = ContextMonitor(poll_interval=0.2)
+    context_monitor.start()
+    print("[Monitor] Continuous context monitoring started")
 
     # Clear buffer and start fresh
     audio_buffer = []
@@ -334,15 +351,25 @@ def start_recording():
         return True
     except Exception as e:
         print(f"Recording error: {e}", file=sys.stderr)
+        if context_monitor:
+            context_monitor.stop()
         update_state("ready")
         return False
 
 
 def stop_recording():
-    """Stop recording and return audio data."""
-    global is_recording, stream
+    """Stop recording and return audio data plus context timeline."""
+    global is_recording, stream, context_monitor
 
     is_recording = False
+
+    # Stop context monitoring and get timeline
+    timeline = None
+    if context_monitor:
+        timeline = context_monitor.stop()
+        num_events = len(timeline.events) if timeline else 0
+        print(f"[Monitor] Stopped - captured {num_events} context events")
+        context_monitor = None
 
     if stream:
         try:
@@ -353,16 +380,17 @@ def stop_recording():
         stream = None
 
     if not audio_buffer:
-        return None
+        return None, timeline
 
     try:
-        return np.concatenate(audio_buffer, axis=0).flatten()
+        audio_data = np.concatenate(audio_buffer, axis=0).flatten()
+        return audio_data, timeline
     except Exception:
-        return None
+        return None, timeline
 
 
-def transcribe_and_paste(audio_data):
-    """Transcribe audio and paste result."""
+def transcribe_and_paste(audio_data, context: WindowContext = None, timeline: ContextTimeline = None):
+    """Transcribe audio and paste result with context and timeline."""
     global is_processing
 
     is_processing = True
@@ -389,7 +417,30 @@ def transcribe_and_paste(audio_data):
         text = result["text"].strip()
 
         if text:
-            pyperclip.copy(text)
+            # Use prompt assembler for smart formatting
+            assembler = PromptAssembler()
+            output = assembler.assemble(text, context)
+
+            # Add timeline with all selections if available
+            if timeline and timeline.events:
+                timeline_output = format_timeline_for_prompt(timeline)
+                if timeline_output:
+                    # Replace the single selection section with the full timeline
+                    # Remove the existing "## Selected Code" section if present
+                    if "## Selected Code" in output:
+                        # Find and remove existing selection section
+                        idx = output.find("## Selected Code")
+                        if idx > 0:
+                            output = output[:idx].rstrip()
+
+                    output = output + "\n\n" + timeline_output
+
+                # Also add the timeline summary
+                timeline_md = timeline.to_markdown()
+                if timeline_md:
+                    output = output + "\n\n" + timeline_md
+
+            pyperclip.copy(output)
             time.sleep(0.1)
             keyboard.send("ctrl+v")
 
@@ -402,7 +453,7 @@ def transcribe_and_paste(audio_data):
 
 def on_hotkey():
     """Handle hotkey press."""
-    global is_recording, is_processing
+    global is_recording, is_processing, captured_context
 
     # Ignore if still processing previous recording
     if is_processing:
@@ -411,14 +462,18 @@ def on_hotkey():
     if not is_recording:
         start_recording()
     else:
-        audio_data = stop_recording()
+        audio_data, timeline = stop_recording()
         if audio_data is not None and len(audio_data) > 0:
+            # Pass the captured context and timeline to the transcription thread
+            context = captured_context
+            captured_context = None  # Clear for next recording
             threading.Thread(
                 target=transcribe_and_paste,
-                args=(audio_data,),
+                args=(audio_data, context, timeline),
                 daemon=True
             ).start()
         else:
+            captured_context = None
             update_state("ready")
 
 
