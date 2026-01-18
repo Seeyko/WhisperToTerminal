@@ -1,0 +1,42 @@
+# Build artifacts
+build/
+dist/
+*.exe
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Whisper model cache (large files)
+# Users should download their own models
+*.pt
+
+# Logs
+*.log
+
+# Local configuration
+.claude/
