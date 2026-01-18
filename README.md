@@ -155,13 +155,26 @@ Everything is captured with timestamps that correlate with your speech!
 
 ```
 WhisperVoice/
-├── whisper_app.py       # Main GUI application
-├── whisper_hotkey.py    # CLI version (no GUI)
-├── context_capture.py   # Window/selection context capture
-├── context_monitor.py   # Continuous monitoring during recording (NEW)
-├── prompt_assembler.py  # Smart prompt formatting
-├── requirements.txt     # Python dependencies
-├── test_*.py            # Unit tests (93 tests)
+├── whisper_app.py           # Entry point (thin wrapper)
+├── src/
+│   └── whispervoice/        # Main package
+│       ├── app.py           # Application orchestration
+│       ├── core/            # Core functionality
+│       │   ├── audio.py     # Audio recording
+│       │   └── transcription.py  # Whisper transcription
+│       ├── context/         # Context capture
+│       │   ├── capture.py   # Window/selection capture
+│       │   ├── monitor.py   # Continuous monitoring
+│       │   └── types.py     # Data classes
+│       ├── output/          # Output formatting
+│       │   └── assembler.py # Prompt assembly
+│       └── ui/              # User interface
+│           ├── indicator.py # Floating indicator
+│           └── tray.py      # System tray
+├── tests/                   # Unit tests (93 tests)
+│   ├── test_context.py
+│   └── test_output.py
+├── requirements.txt
 └── README.md
 ```
 

@@ -1,19 +1,17 @@
-#!/usr/bin/env python3
 """
-Prompt Assembler Module for WhisperVoice
+Prompt Assembler Module for WhisperVoice.
 
 Assembles captured context into formatted prompts for AI assistants.
 Supports customizable templates and smart formatting based on context type.
 """
 
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
 from typing import Optional
 
-from context_capture import WindowContext, AppType, SelectedText
+from ..context.types import WindowContext, AppType, SelectedText
 
 
 # Default templates for different contexts
@@ -84,8 +82,8 @@ class PromptConfig:
     custom_template: Optional[str] = None
     include_context: bool = True
     include_selection: bool = True
-    code_block_lang: str = ""  # Auto-detect if empty
-    max_selection_chars: int = 10000  # Truncate very long selections
+    code_block_lang: str = ""
+    max_selection_chars: int = 10000
     extra_fields: dict = field(default_factory=dict)
 
 
@@ -116,8 +114,8 @@ class PromptAssembler:
                     with open(config_path, "r", encoding="utf-8") as f:
                         user_templates = json.load(f)
                         self.templates.update(user_templates)
-                except Exception as e:
-                    print(f"Warning: Failed to load templates from {config_path}: {e}")
+                except Exception:
+                    pass
                 break
 
     def _detect_code_language(self, context: Optional[WindowContext]) -> str:
@@ -129,48 +127,19 @@ class PromptAssembler:
         if not file_path:
             return ""
 
-        # Common file extension to language mapping
         ext_to_lang = {
-            ".py": "python",
-            ".js": "javascript",
-            ".ts": "typescript",
-            ".tsx": "tsx",
-            ".jsx": "jsx",
-            ".java": "java",
-            ".kt": "kotlin",
-            ".go": "go",
-            ".rs": "rust",
-            ".rb": "ruby",
-            ".php": "php",
-            ".cs": "csharp",
-            ".cpp": "cpp",
-            ".c": "c",
-            ".h": "c",
-            ".hpp": "cpp",
-            ".swift": "swift",
-            ".scala": "scala",
-            ".r": "r",
-            ".sql": "sql",
-            ".sh": "bash",
-            ".bash": "bash",
-            ".zsh": "zsh",
-            ".ps1": "powershell",
-            ".html": "html",
-            ".css": "css",
-            ".scss": "scss",
-            ".sass": "sass",
-            ".less": "less",
-            ".json": "json",
-            ".yaml": "yaml",
-            ".yml": "yaml",
-            ".xml": "xml",
-            ".md": "markdown",
-            ".toml": "toml",
-            ".ini": "ini",
-            ".cfg": "ini",
-            ".dockerfile": "dockerfile",
-            ".vue": "vue",
-            ".svelte": "svelte",
+            ".py": "python", ".js": "javascript", ".ts": "typescript",
+            ".tsx": "tsx", ".jsx": "jsx", ".java": "java", ".kt": "kotlin",
+            ".go": "go", ".rs": "rust", ".rb": "ruby", ".php": "php",
+            ".cs": "csharp", ".cpp": "cpp", ".c": "c", ".h": "c",
+            ".hpp": "cpp", ".swift": "swift", ".scala": "scala", ".r": "r",
+            ".sql": "sql", ".sh": "bash", ".bash": "bash", ".zsh": "zsh",
+            ".ps1": "powershell", ".html": "html", ".css": "css",
+            ".scss": "scss", ".sass": "sass", ".less": "less",
+            ".json": "json", ".yaml": "yaml", ".yml": "yaml",
+            ".xml": "xml", ".md": "markdown", ".toml": "toml",
+            ".ini": "ini", ".cfg": "ini", ".dockerfile": "dockerfile",
+            ".vue": "vue", ".svelte": "svelte",
         }
 
         ext = Path(file_path).suffix.lower()
@@ -178,21 +147,16 @@ class PromptAssembler:
 
     def _select_template(self, context: Optional[WindowContext]) -> str:
         """Select the best template based on context and config."""
-        # Use custom template if provided
         if self.config.custom_template:
             return self.config.custom_template
 
-        # If context is disabled, use a minimal template
         if not self.config.include_context:
-            # Simple template without context details
             return """## Voice Input
 $voice_input
 $selected_section"""
 
-        # Use configured template name
         template_name = self.config.template_name
 
-        # Auto-select based on context type if using "auto" or "default"
         if template_name in ("auto", "default") and context:
             if context.app_type == AppType.IDE:
                 template_name = "ide"
@@ -201,22 +165,17 @@ $selected_section"""
             elif context.app_type == AppType.TERMINAL:
                 template_name = "terminal"
             elif context.app_type == AppType.EDITOR:
-                template_name = "ide"  # Use IDE template for editors too
+                template_name = "ide"
 
         return self.templates.get(template_name, self.templates["default"])
 
-    def _format_selected_text(
-        self,
-        selected: Optional[SelectedText],
-        lang: str = ""
-    ) -> str:
+    def _format_selected_text(self, selected: Optional[SelectedText], lang: str = "") -> str:
         """Format selected text as a code block."""
         if not selected or not selected.text:
             return ""
 
         text = selected.text
 
-        # Truncate if too long
         if len(text) > self.config.max_selection_chars:
             text = text[:self.config.max_selection_chars]
             text += f"\n... (truncated, {selected.char_count - self.config.max_selection_chars} more chars)"
@@ -227,11 +186,9 @@ $selected_section"""
         """Build the context section from WindowContext."""
         lines = ["## Context"]
 
-        # Application info
         app_name = context.process_name.replace(".exe", "").title()
         lines.append(f"- **Application**: {app_name}")
 
-        # File path
         if context.file_path:
             lines.append(f"- **File**: `{context.file_path}`")
         elif context.extra.get("filename"):
@@ -242,32 +199,24 @@ $selected_section"""
             else:
                 lines.append(f"- **File**: `{filename}`")
 
-        # Line number
         if context.line_number:
             lines.append(f"- **Line**: {context.line_number}")
 
-        # URL for browsers
         if context.url:
             lines.append(f"- **URL**: {context.url}")
         elif context.extra.get("page_title"):
             lines.append(f"- **Page**: {context.extra['page_title']}")
 
-        # Terminal-specific
         if context.app_type == AppType.TERMINAL:
             if context.extra.get("terminal_type"):
                 lines.append(f"- **Shell**: {context.extra['terminal_type']}")
 
-        # Project info
         if context.extra.get("project"):
             lines.append(f"- **Project**: {context.extra['project']}")
 
         return "\n".join(lines) + "\n"
 
-    def assemble(
-        self,
-        voice_input: str,
-        context: Optional[WindowContext] = None,
-    ) -> str:
+    def assemble(self, voice_input: str, context: Optional[WindowContext] = None) -> str:
         """
         Assemble a formatted prompt from voice input and context.
 
@@ -278,13 +227,9 @@ $selected_section"""
         Returns:
             Formatted prompt string ready for AI assistant.
         """
-        # Get the appropriate template
         template_str = self._select_template(context)
-
-        # Detect code language
         lang = self.config.code_block_lang or self._detect_code_language(context)
 
-        # Build template variables
         variables = {
             "voice_input": voice_input.strip(),
             "context_section": "",
@@ -302,10 +247,8 @@ $selected_section"""
         }
 
         if context and self.config.include_context:
-            # Basic app info
             variables["app_name"] = context.process_name.replace(".exe", "").title()
 
-            # File path
             if context.file_path:
                 variables["file_path"] = context.file_path
                 variables["file_or_url"] = context.file_path
@@ -315,11 +258,9 @@ $selected_section"""
                 variables["file_path"] = f"{filename}" + (f" ({folder})" if folder else "")
                 variables["file_or_url"] = variables["file_path"]
 
-            # Line number
             if context.line_number:
                 variables["line_info"] = f"\n- **Line**: {context.line_number}"
 
-            # URL/Page info for browsers
             if context.url:
                 variables["url_info"] = f"\n- **URL**: {context.url}"
                 variables["file_or_url"] = context.url
@@ -330,39 +271,31 @@ $selected_section"""
             if context.extra.get("browser"):
                 variables["browser_type"] = context.extra["browser"]
 
-            # Terminal info
             if context.extra.get("terminal_type"):
                 variables["terminal_type"] = context.extra["terminal_type"]
             if context.app_type == AppType.TERMINAL and context.file_path:
                 variables["cwd"] = context.file_path
 
-            # Extra context (project, etc.)
             extra_lines = []
             if context.extra.get("project"):
                 extra_lines.append(f"- **Project**: {context.extra['project']}")
             variables["extra_context"] = "\n".join(extra_lines)
 
-            # Build full context section for default template
             variables["context_section"] = self._build_context_section(context)
 
-            # Selected text
             if self.config.include_selection and context.selected_text:
                 variables["selected_section"] = self._format_selected_text(
                     context.selected_text, lang
                 )
 
-        # Apply template
         try:
             template = Template(template_str)
             result = template.safe_substitute(variables)
-        except Exception as e:
-            # Fallback to simple format if template fails
-            print(f"Template error: {e}")
+        except Exception:
             result = f"## Voice Input\n{voice_input}"
             if context and context.selected_text:
                 result += f"\n\n{variables['selected_section']}"
 
-        # Clean up extra whitespace
         result = "\n".join(line for line in result.split("\n") if line.strip() or line == "")
         result = result.strip()
 
@@ -386,76 +319,7 @@ def assemble_prompt(
     context: Optional[WindowContext] = None,
     template_name: str = "default",
 ) -> str:
-    """
-    Convenience function to assemble a prompt.
-
-    Args:
-        voice_input: The transcribed voice input.
-        context: Optional window context.
-        template_name: Name of template to use.
-
-    Returns:
-        Formatted prompt string.
-    """
+    """Convenience function to assemble a prompt."""
     config = PromptConfig(template_name=template_name)
     assembler = PromptAssembler(config)
     return assembler.assemble(voice_input, context)
-
-
-# Standalone test
-if __name__ == "__main__":
-    from context_capture import get_active_window_info
-
-    print("Testing prompt assembler...")
-    print("=" * 60)
-
-    # Test with mock data
-    mock_selected = SelectedText(
-        text="def hello():\n    print('Hello, World!')",
-        source="clipboard"
-    )
-
-    mock_context = WindowContext(
-        window_handle=1,
-        window_title="main.py - myproject - Visual Studio Code",
-        process_name="code.exe",
-        process_id=1234,
-        app_type=AppType.IDE,
-        file_path="C:\\dev\\myproject\\main.py",
-        selected_text=mock_selected,
-        extra={"folder": "myproject", "filename": "main.py"},
-    )
-
-    assembler = PromptAssembler()
-
-    # Test default template
-    print("\n--- Default Template ---")
-    prompt = assembler.assemble(
-        "Can you explain what this function does?",
-        mock_context
-    )
-    print(prompt)
-
-    # Test minimal template
-    print("\n--- Minimal Template ---")
-    config = PromptConfig(template_name="minimal")
-    assembler = PromptAssembler(config)
-    prompt = assembler.assemble(
-        "Refactor this code",
-        mock_context
-    )
-    print(prompt)
-
-    # Test code review template
-    print("\n--- Code Review Template ---")
-    config = PromptConfig(template_name="code_review")
-    assembler = PromptAssembler(config)
-    prompt = assembler.assemble(
-        "Please review this code for potential issues",
-        mock_context
-    )
-    print(prompt)
-
-    # List available templates
-    print("\n--- Available Templates ---")
-    print(assembler.list_templates())

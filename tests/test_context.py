@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""
-Unit tests for context_capture module.
-"""
+"""Unit tests for context capture module."""
 
 import pytest
-from context_capture import (
+from whispervoice.context import (
     AppType,
     WindowContext,
     SelectedText,
@@ -240,7 +238,7 @@ class TestSelectedText:
     def test_empty_text(self):
         selected = SelectedText(text="", source="clipboard")
         assert selected.char_count == 0
-        assert selected.line_count == 0  # Empty string has no lines
+        assert selected.line_count == 0
 
     def test_to_dict(self):
         selected = SelectedText(text="Test", source="uiautomation")
@@ -360,7 +358,6 @@ class TestGetContextSummary:
         assert "function foo()" in result
 
     def test_context_with_long_selected_text(self):
-        # Create text longer than 100 chars
         long_text = "a" * 150
         selected = SelectedText(text=long_text, source="clipboard")
         context = WindowContext(
@@ -374,11 +371,11 @@ class TestGetContextSummary:
         result = get_context_summary(context)
 
         assert "Selected: 150 chars" in result
-        assert "..." in result  # Text should be truncated
+        assert "..." in result
 
 
 class TestExtractIDELineInfo:
-    """Tests for extract_ide_line_info function (Phase 1.3)."""
+    """Tests for extract_ide_line_info function."""
 
     def test_notepadpp_format(self):
         title = "myfile.py - Notepad++ [Line 42, Col 15]"
@@ -414,7 +411,7 @@ class TestExtractIDELineInfo:
 
 
 class TestExtractVSCodeContext:
-    """Tests for extract_vscode_context function (Phase 1.3)."""
+    """Tests for extract_vscode_context function."""
 
     def test_basic_vscode(self):
         title = "main.py - myproject - Visual Studio Code"
@@ -458,7 +455,7 @@ class TestExtractVSCodeContext:
 
 
 class TestExtractTerminalContextDeep:
-    """Tests for extract_terminal_context_deep function (Phase 1.3)."""
+    """Tests for extract_terminal_context_deep function."""
 
     def test_windows_terminal(self):
         result = extract_terminal_context_deep(
@@ -496,7 +493,6 @@ class TestUIAutomationAvailable:
     """Tests for UI Automation availability."""
 
     def test_ui_automation_flag(self):
-        # UI Automation should be available on Windows with comtypes
         assert UI_AUTOMATION_AVAILABLE == True
 
 

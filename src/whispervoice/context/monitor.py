@@ -1,34 +1,23 @@
-#!/usr/bin/env python3
 """
-Continuous Context Monitor for WhisperVoice
+Continuous Context Monitor for WhisperVoice.
 
 Monitors and tracks context changes while the user is recording:
 - Window focus changes (switching between apps)
 - Selection changes (when user selects new text)
 - Builds a timeline of all context events
-
-This allows the user to navigate between windows, select multiple
-pieces of text, and have everything captured with timestamps.
 """
 
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional, Callable
+from typing import Optional
 from enum import Enum
 
 import pyperclip
 import win32gui
-import win32clipboard
 
-from context_capture import (
-    get_active_window_info,
-    WindowContext,
-    AppType,
-    SelectedText,
-    ClipboardManager,
-)
+from .types import WindowContext
+from .capture import get_active_window_info, ClipboardManager
 
 
 class EventType(Enum):
@@ -146,7 +135,6 @@ class ContextMonitor:
         self._thread: Optional[threading.Thread] = None
         self._start_time = 0
 
-        # State tracking
         self._last_window_handle = 0
         self._last_clipboard_content = ""
         self._clipboard_mgr = ClipboardManager()
@@ -161,11 +149,9 @@ class ContextMonitor:
         self.timeline = ContextTimeline()
         self.timeline.start_time = self._start_time
 
-        # Capture initial state
         self._last_clipboard_content = self._get_clipboard_safe()
         self._last_window_handle = win32gui.GetForegroundWindow()
 
-        # Record initial context
         initial_context = get_active_window_info(capture_selection=False)
         self.timeline.add_event(ContextEvent(
             timestamp=0,
@@ -182,24 +168,17 @@ class ContextMonitor:
                 description=f"Initial window: {initial_context.process_name}"
             ))
 
-        # Start monitoring thread
         self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self._thread.start()
 
     def stop(self) -> ContextTimeline:
-        """
-        Stop monitoring and return the timeline.
-
-        Returns:
-            ContextTimeline with all captured events
-        """
+        """Stop monitoring and return the timeline."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=1.0)
 
         self.timeline.end_time = time.time()
 
-        # Record stop event
         elapsed = time.time() - self._start_time
         self.timeline.add_event(ContextEvent(
             timestamp=elapsed,
@@ -226,8 +205,7 @@ class ContextMonitor:
             try:
                 self._check_window_change()
                 self._check_clipboard_change()
-            except Exception as e:
-                # Don't crash the monitor on errors
+            except Exception:
                 pass
 
             time.sleep(self.poll_interval)
@@ -239,7 +217,6 @@ class ContextMonitor:
         if current_hwnd != self._last_window_handle and current_hwnd != 0:
             self._last_window_handle = current_hwnd
 
-            # Get context for new window
             context = get_active_window_info(capture_selection=False)
             if context:
                 self.timeline.add_event(ContextEvent(
@@ -253,14 +230,11 @@ class ContextMonitor:
         """Check if clipboard content has changed (user selected new text)."""
         current_content = self._get_clipboard_safe()
 
-        # Check if content changed and is not empty
         if (current_content and
             current_content != self._last_clipboard_content and
             len(current_content.strip()) > 0):
 
             self._last_clipboard_content = current_content
-
-            # Get current window context
             context = get_active_window_info(capture_selection=False)
 
             self.timeline.add_event(ContextEvent(
@@ -281,24 +255,15 @@ def format_timeline_for_prompt(timeline: ContextTimeline) -> str:
     Format the timeline for inclusion in a prompt.
 
     Groups selections by window and formats them nicely.
-
-    Args:
-        timeline: The context timeline
-
-    Returns:
-        Formatted markdown string
     """
     if not timeline.events:
         return ""
 
     sections = []
-
-    # Get unique windows and their selections
     window_selections: dict[str, list[tuple[float, str]]] = {}
 
     for event in timeline.events:
         if event.event_type == EventType.TEXT_SELECTION and event.selected_text:
-            # Key by window info
             ctx = event.window_context
             if ctx:
                 key = f"{ctx.process_name}|{ctx.file_path or ctx.extra.get('filename', 'unknown')}"
@@ -306,7 +271,6 @@ def format_timeline_for_prompt(timeline: ContextTimeline) -> str:
                     window_selections[key] = []
                 window_selections[key].append((event.timestamp, event.selected_text))
 
-    # Format each window's selections
     for key, selections in window_selections.items():
         parts = key.split("|")
         app_name = parts[0].replace(".exe", "").title() if parts else "Unknown"
@@ -315,7 +279,6 @@ def format_timeline_for_prompt(timeline: ContextTimeline) -> str:
         section_lines = [f"### From {app_name}" + (f" - `{file_name}`" if file_name else "")]
 
         for timestamp, text in selections:
-            # Detect language from file extension if possible
             lang = ""
             if file_name:
                 ext_map = {
@@ -342,32 +305,3 @@ def format_timeline_for_prompt(timeline: ContextTimeline) -> str:
         return "## Selected Code/Text\n\n" + "\n\n".join(sections)
 
     return ""
-
-
-# Standalone test
-if __name__ == "__main__":
-    print("Testing Context Monitor...")
-    print("=" * 60)
-    print("Instructions:")
-    print("1. Switch between windows")
-    print("2. Select and copy text (Ctrl+C)")
-    print("3. Wait 10 seconds for the test to complete")
-    print("=" * 60)
-
-    monitor = ContextMonitor(poll_interval=0.2)
-    monitor.start()
-
-    # Run for 10 seconds
-    time.sleep(10)
-
-    timeline = monitor.stop()
-
-    print("\n" + "=" * 60)
-    print("TIMELINE:")
-    print("=" * 60)
-    print(timeline.to_markdown())
-
-    print("\n" + "=" * 60)
-    print("FORMATTED FOR PROMPT:")
-    print("=" * 60)
-    print(format_timeline_for_prompt(timeline))
