@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WhisperVoice Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+      overflow: hidden;
+      font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .glass-container {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      background: rgba(24, 24, 27, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 12px rgba(100, 100, 120, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .container {
+      padding: 20px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .titlebar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      -webkit-app-region: drag;
+    }
+
+    .titlebar h1 {
+      font-size: 18px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #f472b6, #fb923c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .close-btn {
+      -webkit-app-region: no-drag;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.7);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .close-btn:hover {
+      background: rgba(244, 114, 182, 0.2);
+      border-color: rgba(244, 114, 182, 0.4);
+      color: #f472b6;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .setting-row:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .setting-desc {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 2px;
+    }
+
+    .setting-value {
+      font-size: 13px;
+      color: #6ee7b7;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-weight: 500;
+    }
+
+    .setting-value.warning {
+      color: #fbbf24;
+    }
+
+    .setting-value.error {
+      color: #f87171;
+    }
+
+    select, input[type="text"] {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 180px;
+    }
+
+    select:hover, input[type="text"]:hover {
+      border-color: rgba(244, 114, 182, 0.4);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    select:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: #f472b6;
+      box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.15);
+    }
+
+    input[type="color"] {
+      width: 40px;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 2px;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .color-input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-hex {
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      min-width: 70px;
+    }
+
+    .shortcut-input {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shortcut-btn {
+      background: rgba(244, 114, 182, 0.15);
+      border: 1px solid rgba(244, 114, 182, 0.3);
+      color: #f472b6;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .shortcut-btn:hover {
+      background: rgba(244, 114, 182, 0.25);
+      border-color: rgba(244, 114, 182, 0.5);
+    }
+
+    .shortcut-btn.recording {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #ef4444;
+      animation: pulse-red 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .debug-log {
+      flex: 1;
+      min-height: 120px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 12px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 11px;
+      overflow-y: auto;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      padding: 3px 0;
+    }
+
+    .log-time {
+      color: rgba(255, 255, 255, 0.3);
+      margin-right: 8px;
+    }
+
+    .log-info { color: #6ee7b7; }
+    .log-warn { color: #fbbf24; }
+    .log-error { color: #f87171; }
+
+    .shortcut-hint {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.3);
+      text-align: center;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      margin-top: auto;
+    }
+
+    kbd {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: rgba(244, 114, 182, 0.4);
+      border-color: rgba(244, 114, 182, 0.6);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+      background: #f472b6;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .tab:hover {
+      color: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab.active {
+      background: rgba(244, 114, 182, 0.2);
+      color: #f472b6;
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-container">
+    <div class="container">
+      <div class="titlebar">
+        <h1>WhisperVoice Settings</h1>
+        <button class="close-btn" id="closeBtn">&times;</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="general">General</button>
+        <button class="tab" data-tab="appearance">Appearance</button>
+        <button class="tab" data-tab="debug">Debug</button>
+      </div>
+
+      <!-- General Tab -->
+      <div class="tab-content active" id="tab-general">
+        <div class="section">
+          <div class="section-title">Transcription</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Model Size</div>
+              <div class="setting-desc">Larger = better quality, slower</div>
+            </div>
+            <select id="modelSelect">
+              <option value="tiny">Tiny (fastest)</option>
+              <option value="base">Base (fast)</option>
+              <option value="small">Small (balanced)</option>
+              <option value="medium">Medium (good)</option>
+              <option value="large-v3">Large V3 (best)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Auto-paste</div>
+              <div class="setting-desc">Automatically paste after transcription</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="autoPaste" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Shortcuts</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Toggle Recording</div>
+              <div class="setting-desc">Start/stop voice recording</div>
+            </div>
+            <div class="shortcut-input">
+              <input type="text" id="shortcutInput" readonly value="Ctrl+Shift+Space">
+              <button class="shortcut-btn" id="recordShortcut">Change</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Open Settings</div>
+              <div class="setting-desc">Open this settings window</div>
+            </div>
+            <span class="setting-value">F12</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Behavior</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Always on Top</div>
+              <div class="setting-desc">Keep pill above other windows</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="alwaysOnTop" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Start Minimized</div>
+              <div class="setting-desc">Start hidden in system tray</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="startMinimized">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appearance Tab -->
+      <div class="tab-content" id="tab-appearance">
+        <div class="section">
+          <div class="section-title">Pill Colors</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Idle Color</div>
+              <div class="setting-desc">Pill background when not recording</div>
+            </div>
+            <div class="color-input-group">
+              <input type="color" id="colorIdle" value="#18181b">
+              <span class="color-hex" id="colorIdleHex">#18181b</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Recording Color</div>
+              <div class="setting-desc">Pill background while recording</div>
+            </div>
+            <div class="color-input-group">
+              <input type="color" id="colorRecording" value="#321923">
+              <span class="color-hex" id="colorRecordingHex">#321923</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Accent Color</div>
+              <div class="setting-desc">Glow and highlight color</div>
+            </div>
+            <div class="color-input-group">
+              <input type="color" id="colorAccent" value="#f472b6">
+              <span class="color-hex" id="colorAccentHex">#f472b6</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Pill Size</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Width</div>
+            </div>
+            <input type="text" id="pillWidth" value="220" style="width: 80px; text-align: center;">
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Height</div>
+            </div>
+            <input type="text" id="pillHeight" value="90" style="width: 80px; text-align: center;">
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Border Radius</div>
+            </div>
+            <input type="text" id="pillRadius" value="26" style="width: 80px; text-align: center;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Debug Tab -->
+      <div class="tab-content" id="tab-debug">
+        <div class="section">
+          <div class="section-title">System Status</div>
+          <div class="setting-row">
+            <span class="setting-label">CUDA Available</span>
+            <span class="setting-value" id="cudaStatus">Checking...</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Current Device</span>
+            <span class="setting-value" id="deviceStatus">cpu</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Active Model</span>
+            <span class="setting-value" id="modelStatus">-</span>
+          </div>
+        </div>
+
+        <div class="section" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="section-title">Debug Log</div>
+          <div class="debug-log" id="debugLog">
+            <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Settings window opened</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcut-hint">
+        Press <kbd>ESC</kbd> or <kbd>F12</kbd> to close &bull; <kbd>Alt+Drag</kbd> to move pill
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Close button
+    document.getElementById('closeBtn').addEventListener('click', () => {
+      window.close();
+    });
+
+    // ESC/F12 to close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'F12') {
+        window.close();
+      }
+    });
+
+    // Color inputs - update hex display
+    ['colorIdle', 'colorRecording', 'colorAccent'].forEach(id => {
+      const input = document.getElementById(id);
+      const hex = document.getElementById(id + 'Hex');
+      input.addEventListener('input', () => {
+        hex.textContent = input.value;
+        saveSettings();
+      });
+    });
+
+    // Model selection
+    document.getElementById('modelSelect').addEventListener('change', async (e) => {
+      await ipcRenderer.invoke('set-setting', 'model', e.target.value);
+      addLog('info', `Model changed to: ${e.target.value}`);
+    });
+
+    // Toggle switches
+    ['autoPaste', 'alwaysOnTop', 'startMinimized'].forEach(id => {
+      document.getElementById(id).addEventListener('change', async (e) => {
+        await ipcRenderer.invoke('set-setting', id, e.target.checked);
+        addLog('info', `${id} set to: ${e.target.checked}`);
+      });
+    });
+
+    // Size inputs
+    ['pillWidth', 'pillHeight', 'pillRadius'].forEach(id => {
+      document.getElementById(id).addEventListener('change', async (e) => {
+        await ipcRenderer.invoke('set-setting', id, parseInt(e.target.value) || 0);
+        addLog('info', `${id} set to: ${e.target.value}`);
+      });
+    });
+
+    // Shortcut recording
+    let recordingShortcut = false;
+    const shortcutBtn = document.getElementById('recordShortcut');
+    const shortcutInput = document.getElementById('shortcutInput');
+
+    shortcutBtn.addEventListener('click', () => {
+      if (recordingShortcut) {
+        recordingShortcut = false;
+        shortcutBtn.textContent = 'Change';
+        shortcutBtn.classList.remove('recording');
+      } else {
+        recordingShortcut = true;
+        shortcutBtn.textContent = 'Press keys...';
+        shortcutBtn.classList.add('recording');
+        shortcutInput.value = 'Press shortcut...';
+      }
+    });
+
+    document.addEventListener('keydown', async (e) => {
+      if (!recordingShortcut) return;
+      if (e.key === 'Escape') {
+        recordingShortcut = false;
+        shortcutBtn.textContent = 'Change';
+        shortcutBtn.classList.remove('recording');
+        const settings = await ipcRenderer.invoke('get-settings');
+        shortcutInput.value = settings.shortcut || 'Ctrl+Shift+Space';
+        return;
+      }
+
+      e.preventDefault();
+      const keys = [];
+      if (e.ctrlKey) keys.push('Ctrl');
+      if (e.altKey) keys.push('Alt');
+      if (e.shiftKey) keys.push('Shift');
+      if (e.metaKey) keys.push('Win');
+
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      if (!['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) {
+        keys.push(key);
+      }
+
+      if (keys.length > 1) {
+        const shortcut = keys.join('+');
+        shortcutInput.value = shortcut;
+        recordingShortcut = false;
+        shortcutBtn.textContent = 'Change';
+        shortcutBtn.classList.remove('recording');
+        await ipcRenderer.invoke('set-setting', 'shortcut', shortcut);
+        addLog('info', `Shortcut changed to: ${shortcut}`);
+      }
+    });
+
+    // Check status
+    async function checkStatus() {
+      try {
+        const settings = await ipcRenderer.invoke('get-settings');
+        document.getElementById('cudaStatus').textContent = settings.cudaAvailable ? 'Yes' : 'No';
+        document.getElementById('cudaStatus').className = 'setting-value ' + (settings.cudaAvailable ? '' : 'warning');
+        document.getElementById('deviceStatus').textContent = settings.device || 'cpu';
+        document.getElementById('modelStatus').textContent = settings.model || 'medium';
+        document.getElementById('modelSelect').value = settings.model || 'medium';
+        document.getElementById('autoPaste').checked = settings.autoPaste !== false;
+        document.getElementById('alwaysOnTop').checked = settings.alwaysOnTop !== false;
+        document.getElementById('startMinimized').checked = settings.startMinimized || false;
+        document.getElementById('shortcutInput').value = settings.shortcut || 'Ctrl+Shift+Space';
+
+        if (settings.colorIdle) {
+          document.getElementById('colorIdle').value = settings.colorIdle;
+          document.getElementById('colorIdleHex').textContent = settings.colorIdle;
+        }
+        if (settings.colorRecording) {
+          document.getElementById('colorRecording').value = settings.colorRecording;
+          document.getElementById('colorRecordingHex').textContent = settings.colorRecording;
+        }
+        if (settings.colorAccent) {
+          document.getElementById('colorAccent').value = settings.colorAccent;
+          document.getElementById('colorAccentHex').textContent = settings.colorAccent;
+        }
+        if (settings.pillWidth) document.getElementById('pillWidth').value = settings.pillWidth;
+        if (settings.pillHeight) document.getElementById('pillHeight').value = settings.pillHeight;
+        if (settings.pillRadius) document.getElementById('pillRadius').value = settings.pillRadius;
+      } catch (e) {
+        addLog('error', 'Failed to load settings: ' + e.message);
+      }
+    }
+
+    async function saveSettings() {
+      const settings = {
+        colorIdle: document.getElementById('colorIdle').value,
+        colorRecording: document.getElementById('colorRecording').value,
+        colorAccent: document.getElementById('colorAccent').value,
+      };
+      for (const [key, value] of Object.entries(settings)) {
+        await ipcRenderer.invoke('set-setting', key, value);
+      }
+    }
+
+    // Listen for debug logs
+    ipcRenderer.on('debug-log', (event, { level, message }) => {
+      addLog(level, message);
+    });
+
+    function addLog(level, message) {
+      const log = document.getElementById('debugLog');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">${time}</span><span class="log-${level}">${message}</span>`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Initial load
+    checkStatus();
+    addLog('info', 'Settings loaded');
+  </script>
+</body>
+</html>

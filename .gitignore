@@ -40,3 +40,5 @@ nul
 
 # Local configuration
 .claude/
+
+node_modules

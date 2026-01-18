@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+      overflow: hidden;
+      user-select: none;
+      font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+    }
+
+    :root {
+      --color-idle: rgba(24, 24, 27, 0.95);
+      --color-recording: rgba(50, 25, 35, 0.95);
+      --color-accent: #f472b6;
+    }
+
+    .app-container {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .floating-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 20px;
+      height: 54px;
+      border-radius: 27px;
+      cursor: pointer;
+      outline: none;
+
+      background: var(--color-idle, rgba(24, 24, 27, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(var(--blur-amount, 20px));
+      -webkit-backdrop-filter: blur(var(--blur-amount, 20px));
+
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .floating-pill:hover {
+      background: color-mix(in srgb, var(--color-idle, rgba(24, 24, 27, 0.95)) 90%, white);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .floating-pill:active {
+      transform: scale(0.98);
+    }
+
+    .floating-pill.recording {
+      background: var(--color-recording, rgba(50, 25, 35, 0.95));
+      border-color: rgba(244, 114, 182, 0.5);
+      box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.5),
+        0 0 20px rgba(244, 114, 182, 0.3);
+    }
+
+    /* Recording state for whole app */
+    .app-container.recording .floating-pill {
+      background: var(--color-recording, rgba(50, 25, 35, 0.95));
+      border-color: var(--color-accent, rgba(244, 114, 182, 0.5));
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 0 8px var(--color-accent, rgba(244, 114, 182, 0.3));
+    }
+
+    .app-container.recording .settings-panel {
+      background: var(--color-recording, rgba(50, 25, 35, 0.98));
+      border-color: var(--color-accent, rgba(244, 114, 182, 0.3));
+    }
+
+    .floating-pill.expanded {
+      border-radius: 16px 16px 0 0;
+      border-bottom: none;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6ee7b7;
+      box-shadow: 0 0 10px rgba(110, 231, 183, 0.6);
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .status-dot.pulse {
+      background: #f472b6;
+      box-shadow: 0 0 14px rgba(244, 114, 182, 0.7);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .status-text {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    .timer {
+      color: #f9a8d4;
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+
+    .waveform {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 24px;
+      pointer-events: none;
+    }
+
+    .bar {
+      width: 3px;
+      background: linear-gradient(to top, #f472b6, #fb923c);
+      border-radius: 2px;
+      transition: height 0.08s ease-out;
+      min-height: 3px;
+    }
+
+    .content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .settings-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      pointer-events: auto;
+      font-size: 14px;
+    }
+
+    .settings-btn:hover {
+      background: rgba(244, 114, 182, 0.2);
+      color: #f472b6;
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+      background: var(--color-idle, rgba(24, 24, 27, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-top: none;
+      border-radius: 0 0 16px 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(var(--blur-amount, 20px));
+      -webkit-backdrop-filter: blur(var(--blur-amount, 20px));
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .settings-panel.open {
+      max-height: 500px;
+      opacity: 1;
+    }
+
+    .settings-content {
+      padding: 16px;
+      max-height: 450px;
+      overflow-y: auto;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 3px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .tab:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .tab.active {
+      background: rgba(244, 114, 182, 0.25);
+      color: #f472b6;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      margin-top: 12px;
+    }
+
+    .section-title:first-child {
+      margin-top: 0;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      margin-bottom: 6px;
+    }
+
+    .setting-row:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .setting-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .setting-desc {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 1px;
+    }
+
+    .setting-value {
+      font-size: 12px;
+      color: #6ee7b7;
+      font-family: 'Consolas', monospace;
+    }
+
+    .setting-value.warning { color: #fbbf24; }
+
+    select {
+      background: #2a2a2e;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #f472b6;
+    }
+
+    select option {
+      background: #2a2a2e;
+      color: white;
+      padding: 8px;
+    }
+
+    input[type="text"] {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: 70px;
+      text-align: center;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #f472b6;
+    }
+
+    input[type="color"] {
+      width: 32px;
+      height: 26px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 2px;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border-radius: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 38px;
+      height: 20px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      transition: 0.2s;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: rgba(244, 114, 182, 0.5);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(18px);
+      background: #f472b6;
+    }
+
+    .debug-log {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+      padding: 8px;
+      font-family: 'Consolas', monospace;
+      font-size: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .log-entry {
+      padding: 2px 0;
+    }
+
+    .log-time {
+      color: rgba(255, 255, 255, 0.3);
+      margin-right: 6px;
+    }
+
+    .log-info { color: #6ee7b7; }
+    .log-warn { color: #fbbf24; }
+    .log-error { color: #f87171; }
+
+    .shortcut-hint {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.3);
+      text-align: center;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    kbd {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container" id="appContainer">
+    <div class="floating-pill" id="pill">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="content" id="content">
+        <span class="status-text" id="statusText">Ready</span>
+      </div>
+      <button class="settings-btn" id="settingsBtn" title="Settings (F12)">&#9881;</button>
+    </div>
+
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-content">
+        <div class="tabs">
+          <button class="tab active" data-tab="general">General</button>
+          <button class="tab" data-tab="appearance">Style</button>
+          <button class="tab" data-tab="debug">Debug</button>
+        </div>
+
+        <!-- General Tab -->
+        <div class="tab-content active" id="tab-general">
+          <div class="section-title">Transcription</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Model</div>
+              <div class="setting-desc">Quality vs speed</div>
+            </div>
+            <select id="modelSelect">
+              <option value="tiny">Tiny (fastest)</option>
+              <option value="base">Base</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="distil-large-v3">Distil Large V3 (fast+quality)</option>
+              <option value="large-v3">Large V3 (best quality)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Auto-paste</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="autoPaste" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="section-title">Behavior</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Always on top</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="alwaysOnTop" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Appearance Tab -->
+        <div class="tab-content" id="tab-appearance">
+          <div class="section-title">Colors</div>
+          <div class="setting-row">
+            <span class="setting-label">Idle</span>
+            <input type="color" id="colorIdle" value="#18181b">
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Recording</span>
+            <input type="color" id="colorRecording" value="#321923">
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Accent</span>
+            <input type="color" id="colorAccent" value="#f472b6">
+          </div>
+
+          <div class="section-title">Transparency</div>
+          <div class="setting-row">
+            <span class="setting-label">Opacity</span>
+            <input type="range" id="opacity" min="50" max="100" value="95" style="width: 100px;">
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Blur</span>
+            <input type="range" id="blur" min="0" max="40" value="20" style="width: 100px;">
+          </div>
+
+          <div class="section-title">Size</div>
+          <div class="setting-row">
+            <span class="setting-label">Width</span>
+            <input type="text" id="pillWidth" value="220">
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Height</span>
+            <input type="text" id="pillHeight" value="54">
+          </div>
+        </div>
+
+        <!-- Debug Tab -->
+        <div class="tab-content" id="tab-debug">
+          <div class="section-title">Status</div>
+          <div class="setting-row">
+            <span class="setting-label">Device</span>
+            <span class="setting-value" id="deviceStatus">cpu</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Model</span>
+            <span class="setting-value" id="modelStatus">medium</span>
+          </div>
+
+          <div class="section-title">Log</div>
+          <div class="debug-log" id="debugLog">
+            <div class="log-entry"><span class="log-info">Ready</span></div>
+          </div>
+        </div>
+
+        <div class="shortcut-hint">
+          <kbd>F12</kbd> toggle settings &bull; <kbd>Alt+Drag</kbd> move &bull; <kbd>Ctrl+Shift+Space</kbd> record
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    let isRecording = false;
+    let settingsOpen = false;
+    let startTime = 0;
+    let timerInterval = null;
+    let waveformInterval = null;
+
+    // Audio recording
+    let mediaStream = null;
+    let audioContext = null;
+    let analyser = null;
+    let scriptProcessor = null;
+    let audioChunks = [];
+
+    const appContainer = document.getElementById('appContainer');
+    const pill = document.getElementById('pill');
+    const statusDot = document.getElementById('statusDot');
+    const content = document.getElementById('content');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+
+    // Click pill to record (but not on settings button)
+    pill.addEventListener('click', (e) => {
+      if (e.target === settingsBtn || e.target.closest('.settings-btn')) return;
+      if (!isDragging) toggleRecording();
+    });
+
+    // Settings button
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSettings();
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Toggle settings
+    function toggleSettings() {
+      settingsOpen = !settingsOpen;
+      settingsPanel.classList.toggle('open', settingsOpen);
+      pill.classList.toggle('expanded', settingsOpen);
+      ipcRenderer.send('resize-window', settingsOpen);
+      if (settingsOpen) loadSettings();
+    }
+
+    // F12 to toggle settings
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F12') {
+        e.preventDefault();
+        toggleSettings();
+      }
+    });
+
+    // Alt+drag to move window
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let windowStartX = 0;
+    let windowStartY = 0;
+
+    pill.addEventListener('mousedown', async (e) => {
+      if (e.altKey && e.button === 0) {
+        e.preventDefault();
+        isDragging = true;
+        dragStartX = e.screenX;
+        dragStartY = e.screenY;
+        const pos = await ipcRenderer.invoke('get-window-position');
+        windowStartX = pos.x;
+        windowStartY = pos.y;
+
+        const onMouseMove = (e) => {
+          const deltaX = e.screenX - dragStartX;
+          const deltaY = e.screenY - dragStartY;
+          ipcRenderer.send('move-window', windowStartX + deltaX, windowStartY + deltaY);
+        };
+
+        const onMouseUp = () => {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          setTimeout(() => { isDragging = false; }, 50);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      }
+    });
+
+    // Listen for global shortcut
+    ipcRenderer.on('toggle-recording', () => {
+      toggleRecording();
+    });
+
+    ipcRenderer.on('toggle-settings', () => {
+      toggleSettings();
+    });
+
+    async function toggleRecording() {
+      if (isRecording) {
+        await stopRecording();
+      } else {
+        await startRecording();
+      }
+    }
+
+    async function startRecording() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
+        });
+
+        audioContext = new AudioContext({ sampleRate: 16000 });
+        const source = audioContext.createMediaStreamSource(mediaStream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        audioChunks = [];
+
+        scriptProcessor.onaudioprocess = (e) => {
+          const inputData = e.inputBuffer.getChannelData(0);
+          audioChunks.push(new Float32Array(inputData));
+        };
+
+        source.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+
+        isRecording = true;
+        startTime = Date.now();
+        appContainer.classList.add('recording');
+        pill.classList.add('recording');
+        statusDot.classList.add('pulse');
+        showRecordingState();
+        startTimer();
+        startWaveformVisualization();
+        addLog('info', 'Recording started');
+
+      } catch (e) {
+        console.error('Recording error:', e);
+        content.innerHTML = '<span class="status-text">Mic Error</span>';
+        addLog('error', 'Mic access denied');
+        setTimeout(showReadyState, 2000);
+      }
+    }
+
+    async function stopRecording() {
+      content.innerHTML = '<span class="status-text">Processing...</span>';
+      clearInterval(timerInterval);
+      clearInterval(waveformInterval);
+
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
+
+      if (scriptProcessor) {
+        scriptProcessor.disconnect();
+      }
+
+      const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const combinedAudio = new Float32Array(totalLength);
+      let offset = 0;
+      for (const chunk of audioChunks) {
+        combinedAudio.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      try {
+        addLog('info', 'Transcribing...');
+        const result = await ipcRenderer.invoke('transcribe-audio', combinedAudio.buffer);
+        if (result.success) {
+          content.innerHTML = '<span class="status-text">Copied!</span>';
+          addLog('info', 'Transcribed: ' + result.text.substring(0, 30) + '...');
+        } else {
+          content.innerHTML = '<span class="status-text">Error</span>';
+          addLog('error', result.error);
+        }
+      } catch (e) {
+        content.innerHTML = '<span class="status-text">Error</span>';
+        addLog('error', e.message);
+      }
+
+      if (audioContext) audioContext.close();
+      audioContext = null;
+      analyser = null;
+      scriptProcessor = null;
+      audioChunks = [];
+
+      isRecording = false;
+      appContainer.classList.remove('recording');
+      pill.classList.remove('recording');
+      statusDot.classList.remove('pulse');
+
+      setTimeout(showReadyState, 2000);
+    }
+
+    function showReadyState() {
+      content.innerHTML = '<span class="status-text">Ready</span>';
+    }
+
+    function showRecordingState() {
+      content.innerHTML = `
+        <div class="waveform" id="waveform">
+          ${Array(7).fill('<div class="bar" style="height: 4px"></div>').join('')}
+        </div>
+        <span class="timer" id="timer">0:00</span>
+      `;
+    }
+
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        const timer = document.getElementById('timer');
+        if (timer) timer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      }, 100);
+    }
+
+    function startWaveformVisualization() {
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      waveformInterval = setInterval(() => {
+        if (!analyser) return;
+        analyser.getByteFrequencyData(dataArray);
+        const waveform = document.getElementById('waveform');
+        if (waveform) {
+          const bars = waveform.querySelectorAll('.bar');
+          const step = Math.floor(dataArray.length / 7);
+          bars.forEach((bar, i) => {
+            const value = dataArray[i * step] / 255;
+            bar.style.height = `${Math.max(3, value * 24)}px`;
+          });
+        }
+      }, 50);
+    }
+
+    // Settings functions
+    async function loadSettings() {
+      try {
+        const settings = await ipcRenderer.invoke('get-settings');
+        document.getElementById('modelSelect').value = settings.model || 'medium';
+        document.getElementById('autoPaste').checked = settings.autoPaste !== false;
+        document.getElementById('alwaysOnTop').checked = settings.alwaysOnTop !== false;
+        document.getElementById('colorIdle').value = settings.colorIdle || '#18181b';
+        document.getElementById('colorRecording').value = settings.colorRecording || '#321923';
+        document.getElementById('colorAccent').value = settings.colorAccent || '#f472b6';
+        document.getElementById('pillWidth').value = settings.pillWidth || 220;
+        document.getElementById('pillHeight').value = settings.pillHeight || 54;
+        document.getElementById('opacity').value = settings.opacity || 95;
+        document.getElementById('blur').value = settings.blur || 20;
+        document.getElementById('deviceStatus').textContent = settings.device || 'cpu';
+        document.getElementById('modelStatus').textContent = settings.model || 'medium';
+
+        // Apply colors immediately
+        applyColors();
+      } catch (e) {
+        addLog('error', 'Failed to load settings');
+      }
+    }
+
+    // Settings event listeners
+    document.getElementById('modelSelect').addEventListener('change', async (e) => {
+      await ipcRenderer.invoke('set-setting', 'model', e.target.value);
+      document.getElementById('modelStatus').textContent = e.target.value;
+      addLog('info', 'Model: ' + e.target.value);
+    });
+
+    ['autoPaste', 'alwaysOnTop'].forEach(id => {
+      document.getElementById(id).addEventListener('change', async (e) => {
+        await ipcRenderer.invoke('set-setting', id, e.target.checked);
+        addLog('info', id + ': ' + e.target.checked);
+      });
+    });
+
+    ['colorIdle', 'colorRecording', 'colorAccent'].forEach(id => {
+      document.getElementById(id).addEventListener('input', async (e) => {
+        await ipcRenderer.invoke('set-setting', id, e.target.value);
+        applyColors();
+      });
+    });
+
+    ['opacity', 'blur'].forEach(id => {
+      document.getElementById(id).addEventListener('input', async (e) => {
+        await ipcRenderer.invoke('set-setting', id, parseInt(e.target.value));
+        applyColors();
+      });
+    });
+
+    ['pillWidth', 'pillHeight'].forEach(id => {
+      document.getElementById(id).addEventListener('change', async (e) => {
+        await ipcRenderer.invoke('set-setting', id, parseInt(e.target.value) || 0);
+        addLog('info', id + ': ' + e.target.value);
+      });
+    });
+
+    function applyColors() {
+      const idle = document.getElementById('colorIdle').value;
+      const recording = document.getElementById('colorRecording').value;
+      const accent = document.getElementById('colorAccent').value;
+      const opacity = document.getElementById('opacity').value / 100;
+      const blur = document.getElementById('blur').value;
+
+      // Convert hex to rgba for better transparency control
+      const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      };
+
+      document.documentElement.style.setProperty('--color-idle', hexToRgba(idle, opacity));
+      document.documentElement.style.setProperty('--color-recording', hexToRgba(recording, opacity));
+      document.documentElement.style.setProperty('--color-accent', accent);
+      document.documentElement.style.setProperty('--blur-amount', `${blur}px`);
+    }
+
+    function addLog(level, message) {
+      const log = document.getElementById('debugLog');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span><span class="log-${level}">${message}</span>`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+      // Keep only last 50 entries
+      while (log.children.length > 50) log.removeChild(log.firstChild);
+    }
+
+    // Listen for debug logs from main process
+    ipcRenderer.on('debug-log', (event, { level, message }) => {
+      addLog(level, message);
+    });
+
+    // Initial load
+    loadSettings();
+  </script>
+</body>
+</html>
